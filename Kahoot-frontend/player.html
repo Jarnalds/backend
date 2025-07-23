@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahoot Jugador</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mini Kahoot Jugador</h1>
+        <div id="join-form">
+            <input type="text" id="playerNameInput" placeholder="Tu Nombre" required>
+            <select id="playerRoleSelect">
+                <option value="">Selecciona tu rol</option>
+                <option value="programador">Programador</option>
+                <option value="diseñador">Diseñador</option>
+                <option value="comunicador">Comunicador</option>
+                </select>
+            <button id="joinGameBtn">Unirse al Juego</button>
+            <div id="playerMessages" style="color: red; margin-top: 10px;"></div>
+        </div>
+
+        <div id="game-lobby" style="display: none;">
+            <p>¡Bienvenido, <strong id="playerNameDisplay"></strong> (<strong id="playerRoleDisplay"></strong>)!</p>
+            <p id="lobbyMessage">Esperando que el administrador inicie el juego...</p>
+        </div>
+
+        <div id="quiz-container" style="display: none;">
+            <h2 id="question"></h2>
+            <div id="options-container" class="options-grid">
+                </div>
+            <p>Puntuación: <span id="playerScore">0</span></p>
+            <div id="result"></div>
+        </div>
+
+        <div id="game-finished" style="display: none;">
+            <h2>¡Juego Terminado! 🎉</h2>
+            <p>Tu puntuación final es: <strong id="finalPlayerScore"></strong></p>
+            <p>¡Gracias por jugar!</p>
+            <button onclick="window.location.reload()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // backend/kahoot-frontend/player.html script
+        // *** IMPORTANTE: Cambia esta URL por la de tu backend desplegado (Heroku/Render, etc.) ***
+        // Por ejemplo: const socket = io('https://tu-nombre-de-app-kahoot.herokuapp.com');
+        const socket = io('http://localhost:3000'); // URL local para desarrollo
+
+        const playerNameInput = document.getElementById('playerNameInput');
+        const playerRoleSelect = document.getElementById('playerRoleSelect');
+        const joinGameBtn = document.getElementById('joinGameBtn');
+        const playerMessages = document.getElementById('playerMessages');
+
+        const joinForm = document.getElementById('join-form');
+        const gameLobby = document.getElementById('game-lobby');
+        const quizContainer = document.getElementById('quiz-container');
+        const gameFinished = document.getElementById('game-finished');
+
+        const playerNameDisplay = document.getElementById('playerNameDisplay');
+        const playerRoleDisplay = document.getElementById('playerRoleDisplay');
+        const lobbyMessage = document.getElementById('lobbyMessage');
+        const questionElement = document.getElementById('question');
+        const optionsContainer = document.getElementById('options-container');
+        const playerScoreElement = document.getElementById('playerScore');
+        const resultElement = document.getElementById('result');
+        const finalPlayerScoreElement = document.getElementById('finalPlayerScore');
+
+        let currentQuestionId = null; // Para saber qué pregunta se está mostrando actualmente
+
+        joinGameBtn.addEventListener('click', () => {
+            const name = playerNameInput.value.trim();
+            const role = playerRoleSelect.value;
+            if (name && role) {
+                socket.emit('joinGame', { name, role, isAdmin: false });
+                playerNameDisplay.textContent = name;
+                playerRoleDisplay.textContent = role;
+                joinForm.style.display = 'none';
+                gameLobby.style.display = 'block';
+            } else {
+                playerMessages.textContent = 'Por favor, ingresa tu nombre y selecciona un rol.';
+            }
+        });
+
+        socket.on('gameStarted', () => {
+            gameLobby.style.display = 'none';
+            quizContainer.style.display = 'block';
+            resultElement.textContent = '¡El juego ha comenzado! Esperando la primera pregunta...';
+            playerScoreElement.textContent = '0'; // Resetear score visualmente
+        });
+
+        socket.on('gameAlreadyStarted', () => {
+            lobbyMessage.textContent = 'El juego ya ha comenzado. Por favor, espera a la siguiente ronda o a que el administrador lance la siguiente pregunta.';
+        });
+
+        socket.on('newQuestion', (question) => {
+            currentQuestionId = question.id;
+            questionElement.textContent = question.question;
+            optionsContainer.innerHTML = ''; // Limpiar opciones anteriores
+            resultElement.textContent = ''; // Limpiar resultado anterior
+
+            question.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option-button');
+                button.addEventListener('click', () => submitAnswer(question.id, option, button));
+                optionsContainer.appendChild(button);
+            });
+            // Habilitar todos los botones de opción al cargar nueva pregunta
+            optionsContainer.querySelectorAll('.option-button').forEach(btn => btn.disabled = false);
+        });
+
+        function submitAnswer(questionId, selectedOption, clickedButton) {
+            // Deshabilitar todos los botones de opción para esta pregunta
+            optionsContainer.querySelectorAll('.option-button').forEach(btn => btn.disabled = true);
+
+            // Emitir la respuesta al servidor
+            socket.emit('submitAnswer', { questionId, selectedOption });
+        }
+
+        socket.on('answerResult', ({ correct, score, correctOption }) => {
+            playerScoreElement.textContent = score; // Actualizar la puntuación
+            if (correct) {
+                resultElement.textContent = '¡Correcto! 🎉';
+                resultElement.style.color = '#4CAF50';
+                // Resaltar la opción correcta si se quiere, aunque el jugador ya la eligió
+                optionsContainer.querySelectorAll('.option-button').forEach(btn => {
+                    if (btn.textContent === correctOption) {
+                        btn.classList.add('correct');
+                    }
+                });
+            } else {
+                resultElement.textContent = `Incorrecto. La respuesta correcta era: ${correctOption} 😢`;
+                resultElement.style.color = '#F44336';
+                // Resaltar la opción correcta y la incorrecta elegida
+                optionsContainer.querySelectorAll('.option-button').forEach(btn => {
+                    if (btn.textContent === correctOption) {
+                        btn.classList.add('correct');
+                    }
+                    // if (btn.textContent === selectedOption && selectedOption !== correctOption) { // Necesitaríamos el selectedOption aquí
+                    //     btn.classList.add('wrong');
+                    // }
+                });
+            }
+        });
+
+        socket.on('disableOptions', () => {
+            // Este evento podría ser enviado por el servidor para asegurar que no se respondan dos veces
+            optionsContainer.querySelectorAll('.option-button').forEach(btn => btn.disabled = true);
+        });
+
+        socket.on('gameFinishedForPlayer', ({ finalScore }) => {
+            quizContainer.style.display = 'none';
+            gameLobby.style.display = 'none';
+            joinForm.style.display = 'none';
+            gameFinished.style.display = 'block';
+            finalPlayerScoreElement.textContent = finalScore;
+        });
+
+        socket.on('error', (message) => {
+            playerMessages.textContent = `Error del servidor: ${message}`;
+            alert(`Error: ${message}`);
+            // Podrías redirigir al jugador o mostrar un mensaje específico
+            if (message.includes('Ya estás conectado')) {
+                joinForm.style.display = 'none';
+                gameLobby.style.display = 'block';
+                lobbyMessage.textContent = 'Ya estás conectado al juego. Esperando que el administrador inicie/continúe.';
+            }
+        });
+
+        socket.on('adminDisconnected', () => {
+            alert('El administrador se ha desconectado. El juego ha terminado.');
+            window.location.reload(); // Recargar la página para unirse de nuevo
+        });
+
+        socket.on('disconnect', () => {
+            playerMessages.textContent = 'Desconectado del servidor.';
+            joinForm.style.display = 'block';
+            gameLobby.style.display = 'none';
+            quizContainer.style.display = 'none';
+            gameFinished.style.display = 'none';
+            playerNameInput.disabled = false;
+            playerRoleSelect.disabled = false;
+            joinGameBtn.disabled = false;
+        });
+
+        socket.on('reconnect', () => {
+            playerMessages.textContent = 'Reconectado al servidor. Por favor, vuelve a unirte al juego.';
+            // Forzar recarga o volver a la pantalla de unión para re-autenticar al jugador
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

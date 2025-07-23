@@ -1,0 +1,175 @@
+/* backend/kahoot-frontend/style.css */
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 100%;
+    max-width: 650px;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+    font-weight: bold;
+}
+
+h2 {
+    color: #555;
+    margin-top: 25px;
+    margin-bottom: 20px;
+    font-size: 1.6em;
+}
+
+input[type="text"],
+select {
+    width: calc(100% - 22px);
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1.1em;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #6a1b9a; /* Color de Kahoot */
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.15em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    margin: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:hover:not(:disabled) {
+    background-color: #4a148c;
+    transform: translateY(-2px);
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Specific styles for player options */
+.options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.option-button {
+    background-color: #2196F3; /* Azul */
+    color: white;
+    padding: 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.option-button:nth-child(2) { background-color: #F44336; } /* Rojo */
+.option-button:nth-child(3) { background-color: #FFC107; } /* Amarillo */
+.option-button:nth-child(4) { background-color: #4CAF50; } /* Verde */
+
+.option-button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.option-button.correct {
+    background-color: #4CAF50; /* Verde para la respuesta correcta */
+    box-shadow: 0 0 15px #4CAF50;
+    animation: flashGreen 0.5s 2;
+}
+
+.option-button.wrong {
+    background-color: #F44336; /* Rojo para la respuesta incorrecta */
+    box-shadow: 0 0 15px #F44336;
+    animation: flashRed 0.5s 2;
+}
+
+@keyframes flashGreen {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px #4CAF50; }
+    100% { transform: scale(1); }
+}
+
+@keyframes flashRed {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px #F44336; }
+    100% { transform: scale(1); }
+}
+
+#result {
+    margin-top: 25px;
+    font-size: 1.4em;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 8px;
+    min-height: 1.5em; /* Asegura un espacio incluso vacío */
+}
+
+#playerList {
+    list-style: none;
+    padding: 0;
+    margin-top: 25px;
+}
+
+#playerList li {
+    background-color: #e9ecef;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.1em;
+}
+
+#adminMessages, #playerMessages {
+    margin-top: 20px;
+    font-style: italic;
+    color: #666;
+    min-height: 1.2em;
+}
+
+#game-finished {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #e0f2f7;
+    border-radius: 10px;
+}
+
+#game-finished h2 {
+    color: #007bff;
+}
+
+#game-finished p {
+    font-size: 1.3em;
+    color: #333;
+}

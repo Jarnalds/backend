@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahoot Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Panel de Administrador de Kahoot</h1>
+        <div id="connection-form">
+            <input type="text" id="adminNameInput" placeholder="Tu Nombre de Admin" required>
+            <button id="connectAdminBtn">Conectar como Admin</button>
+        </div>
+
+        <div id="adminControls" style="display: none;">
+            <p>Admin Conectado: <strong id="adminNameDisplay"></strong></p>
+            <button id="startGameBtn">Iniciar Juego</button>
+            <button id="nextQuestionBtn" style="display: none;">Siguiente Pregunta</button>
+            <h2>Jugadores Conectados:</h2>
+            <ul id="playerList">
+                </ul>
+        </div>
+        <div id="adminMessages"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // backend/kahoot-frontend/admin.html script
+        // *** IMPORTANTE: Cambia esta URL por la de tu backend desplegado (Heroku/Render, etc.) ***
+        // Por ejemplo: const socket = io('https://tu-nombre-de-app-kahoot.herokuapp.com');
+        const socket = io('http://localhost:3000'); // URL local para desarrollo
+
+        const adminNameInput = document.getElementById('adminNameInput');
+        const connectAdminBtn = document.getElementById('connectAdminBtn');
+        const connectionForm = document.getElementById('connection-form');
+        const adminControls = document.getElementById('adminControls');
+        const adminNameDisplay = document.getElementById('adminNameDisplay');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const playerList = document.getElementById('playerList');
+        const adminMessages = document.getElementById('adminMessages');
+
+        connectAdminBtn.addEventListener('click', () => {
+            const name = adminNameInput.value.trim();
+            if (name) {
+                socket.emit('joinGame', { name, isAdmin: true });
+                adminNameInput.disabled = true;
+                connectAdminBtn.disabled = true;
+            } else {
+                alert('Por favor, ingresa tu nombre de administrador.');
+            }
+        });
+
+        startGameBtn.addEventListener('click', () => {
+            socket.emit('startGame');
+        });
+
+        nextQuestionBtn.addEventListener('click', () => {
+            socket.emit('requestNextQuestion');
+            nextQuestionBtn.disabled = true; // Deshabilitar hasta que se procese la solicitud o pase el tiempo
+        });
+
+        socket.on('adminConnected', () => {
+            connectionForm.style.display = 'none';
+            adminControls.style.display = 'block';
+            adminNameDisplay.textContent = adminNameInput.value;
+            adminMessages.textContent = '¡Bienvenido, administrador! Conectado al juego.';
+        });
+
+        socket.on('currentPlayers', (playersArray) => {
+            playerList.innerHTML = ''; // Limpiar lista existente
+            playersArray.forEach(player => {
+                const listItem = document.createElement('li');
+                listItem.id = `player-${player.id}`; // Asumimos que el ID se pasa si el jugador ya existe
+                listItem.textContent = `${player.name} (${player.role})`;
+                playerList.appendChild(listItem);
+            });
+        });
+
+        socket.on('playerJoined', (player) => {
+            const listItem = document.createElement('li');
+            listItem.id = `player-${player.id}`;
+            listItem.textContent = `${player.name} (${player.role})`;
+            playerList.appendChild(listItem);
+            adminMessages.textContent = `${player.name} se ha unido al juego.`;
+        });
+
+        socket.on('playerLeft', (player) => {
+            const listItem = document.getElementById(`player-${player.id}`);
+            if (listItem) {
+                listItem.remove();
+            }
+            adminMessages.textContent = `${player.name} ha dejado el juego.`;
+        });
+
+        socket.on('gameStarted', () => {
+            adminMessages.textContent = '¡Juego Iniciado! Lanzando la primera ronda de preguntas.';
+            startGameBtn.style.display = 'none';
+            nextQuestionBtn.style.display = 'block';
+            nextQuestionBtn.disabled = false; // Habilitar el botón para la primera pregunta
+        });
+
+        socket.on('newQuestion', (question) => {
+            adminMessages.textContent = `Pregunta ${question.id} enviada a los jugadores.`;
+            nextQuestionBtn.disabled = false; // Habilitar el botón para la siguiente pregunta una vez que la anterior se ha "lanzado"
+        });
+
+        socket.on('allQuestionsSent', () => {
+            adminMessages.textContent = 'Todas las preguntas han sido enviadas. Juego finalizado.';
+            nextQuestionBtn.style.display = 'none';
+            startGameBtn.style.display = 'block'; // Opcional: permitir al admin iniciar un nuevo juego
+            startGameBtn.textContent = 'Iniciar Nuevo Juego';
+            startGameBtn.disabled = false;
+        });
+
+        socket.on('noPlayersForNextQuestion', (message) => {
+            adminMessages.textContent = message;
+            nextQuestionBtn.disabled = false; // Permitir al admin reintentar o manejar
+        });
+
+        socket.on('error', (message) => {
+            adminMessages.textContent = `Error del servidor: ${message}`;
+            alert(`Error: ${message}`);
+            if (message.includes('administrador conectado')) {
+                adminNameInput.disabled = false;
+                connectAdminBtn.disabled = false;
+            }
+        });
+
+        socket.on('adminDisconnected', () => {
+            alert('El administrador se ha desconectado. El juego ha sido reiniciado.');
+            window.location.reload(); // Recargar para volver a la pantalla de conexión
+        });
+
+        socket.on('disconnect', () => {
+            adminMessages.textContent = 'Desconectado del servidor.';
+            connectionForm.style.display = 'block';
+            adminControls.style.display = 'none';
+            adminNameInput.disabled = false;
+            connectAdminBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>
